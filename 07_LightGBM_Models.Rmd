@@ -1,0 +1,229 @@
+---
+title: "LightGBM"
+author: "Braden Anderson"
+date: "2/9/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+install.packages("lightgbm")
+library(lightgbm)
+library(Metrics)
+
+```
+
+
+```{r}
+
+# Read in the data for training/cross validation and final testing
+train_df <- read.csv("./COMBINED_TRAIN_VAL_SET_0210.csv")
+test_df <- read.csv("./testing_dataset_0208.csv")
+test_df <- set_datatypes(test_df)
+train_df <- set_datatypes(train_df)
+
+# Specify the columns that can be used for training
+all_columns <- c("Age", "highway_MPG", "city_mpg", "Engine_Cylinders", "Engine_HP","Number_of_Doors", "Factory_Tuner",                
+                  "Performance", "Luxury", "Flex_Fuel", "Hatchback", "Hybrid", "Diesel", "Exotic", "Crossover",
+                  "Popularity", "MSRP")
+
+
+# Set up the lightgbm dataset for the random forest model
+rf_X_train <- as.matrix(train_df[,(names(train_df) %in% feature_column_names)])
+rf_dataset <- lgb.Dataset(rf_X_train, label=train_df[,"MSRP"])
+
+# Specify the parameters for the random forest model
+rf_train_params = list(objective="regression",
+                       boosting="rf",
+                       metric="rmse", 
+                       learning_rate=1,
+                       min_data_in_leaf=1, 
+                       bagging_fraction=0.63,
+                       bagging_freq=1,
+                       reg_lambda=0,
+                       reg_alpha=0,
+                       force_row_wise=TRUE,
+                       num_iterations=500)
+
+
+# Perform 5-fold cross validation using the random forest parameters specified above.
+rf_cv <- lightgbm::lgb.cv(data=rf_dataset,
+                          params=rf_train_params,
+                          nfold=5L)
+
+
+# Train using the best number of trees found by cross validation
+rf <- lightgbm::lightgbm(data=rf_dataset,
+                         params=rf_train_params,
+                         nrounds=rf_cv$best_iter)
+
+```
+
+```{r}
+
+# Set up the random forest test set
+rf_X_test <- as.matrix(test_df[,(names(test_df) %in% feature_column_names)])
+#rf_test_dataset <- lgb.Dataset(rf_X_test, label=test_df[,"MSRP"])
+
+rf_test_preds <- predict(object=rf, data=rf_X_test)
+
+rf_test_RMSE <- Metrics::rmse(actual=test_df[,"MSRP"],
+                              predicted=rf_test_preds)
+
+
+rf_test_RMSE
+```
+
+```{r}
+
+rf_cv$best_score
+
+```
+
+```{r}
+# Plot the feature importances for the random forest model
+lightgbm::lgb.plot.importance(lightgbm::lgb.importance(rf), top_n=15L)
+
+```
+
+
+
+
+```{r}
+
+# Get the names of the features to use for training
+feature_column_names <- all_columns[all_columns != "MSRP"]
+
+# Subset so the data sets so that they only contain the features for training and the target
+train_data <- train_df[,c(feature_column_names, "MSRP")]
+test_data <- test_df[,c(feature_column_names, "MSRP")]
+
+# Set up lgbm datasets for gradient boosted decision trees
+# Training / CV set
+gbdt_train_dataset <- build_lgbm_dataset(df=train_data,
+                                         feature_columns=feature_column_names,
+                                         target_column="MSRP",
+                                         categorical_features=NULL, 
+                                         include_categoricals = FALSE)
+
+# Final test set
+gbdt_test_data <- build_lgbm_dataset(df=test_data, 
+                                     feature_columns=feature_column_names, 
+                                     target_column="MSRP", 
+                                     categorical_features=NULL, 
+                                     include_categoricals = FALSE,
+                                     test_data=TRUE)
+
+
+# Specify the model Hyperparameters
+gbdt_train_params = list(objective="regression",
+                         metric="rmse",
+                         boosting="gbdt",
+                         force_row_wise=TRUE,
+                         learning_rate=0.01,
+                         num_rounds=5000L, 
+                         num_leaves=25,
+                         num_threads=5)
+
+
+# Perform 5-fold cross validation
+cv <- lightgbm::lgb.cv(data=gbdt_train_dataset,
+                       params=gbdt_train_params,
+                       nfold=5L)
+
+
+```
+
+
+```{r}
+
+
+# Retrain one more time using the best number of iterations found during cv
+booster <- lightgbm::lightgbm(data=gbdt_train_dataset,
+                              params=gbdt_train_params,
+                              nrounds=cv$best_iter)
+
+```
+
+```{r}
+
+source("./Applied_Stats_Project_Functions.R")
+
+gbdt_preds <- get_test_set_preditions(lgbm_model=booster,
+                                      test_dataset=gbdt_test_data)
+
+gbdt_preds
+
+```
+
+```{r}
+
+
+lightgbm::lgb.plot.importance(lightgbm::lgb.importance(booster), top_n=15L)
+```
+
+
+
+
+```{r}
+
+# Specify the model Hyperparameters
+dart_train_params = list(objective="regression",
+                         metric="rmse",
+                         boosting="dart",
+                         force_row_wise=TRUE,
+                         learning_rate=0.0075,
+                         num_rounds=10000L, 
+                         num_leaves=40,
+                         num_threads=5)
+
+
+dart_cv <- lightgbm::lgb.cv(params=dart_train_params,
+                            data=gbdt_train_dataset)
+
+
+dart_cv$best_score
+```
+
+
+
+
+```{r}
+
+
+# Retrain one more time using the best number of iterations found during cv
+dart <- lightgbm::lightgbm(data=gbdt_train_dataset,
+                              params=dart_train_params,
+                              nrounds=dart_cv$best_iter)
+
+
+```
+
+
+
+```{r}
+
+dart_metrics <- get_test_set_preditions(lgbm_model=dart,
+                                        test_dataset=gbdt_test_data)
+
+
+
+dart_metrics
+
+```
+
+```{r}
+lightgbm::lgb.plot.importance(lightgbm::lgb.importance(dart), top_n=15L)
+```
+
+
+
+
+
+
