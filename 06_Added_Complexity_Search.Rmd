@@ -1,0 +1,73 @@
+---
+title: "adding_complexity"
+author: "Braden Anderson"
+date: "2/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+source("Applied_Stats_Project_Functions.R")
+
+```
+
+
+```{r}
+
+train_df <- read.csv("./COMBINED_TRAIN_VAL_SET_0210.csv")
+test_df <- read.csv("./testing_dataset_0208.csv")
+test_df <- set_datatypes(test_df)
+train_df <- set_datatypes(train_df)
+
+
+initial_features <- c("Age", "Engine_Cylinders", "Engine_HP","Transmission_Type", "Vehicle_Style", "Driven_Wheels", "Luxury", "Hybrid", "Diesel", "Exotic")
+complex_features <- c("Engine_HP_Squared", "Age_Squared", "Engine_Cylinders:Luxury", "Engine_Cylinders:Diesel", "Engine_Cylinders:Exotic", "city_mpg+city_mpg_squared")
+
+
+train_df[,"Engine_HP_Squared"] <- train_df[,"Engine_HP"]^2
+train_df[,"Age_Squared"] <- train_df[,"Age"]^2
+train_df[,"city_mpg_squared"] <- train_df[,"city_mpg"]^2
+
+
+metric_df <- cross_validate_complex_models(train_data=train_df, 
+                                           initial_features=initial_features, 
+                                           complex_features=complex_features, 
+                                           response_var="log_MSRP")
+
+
+#write.csv(metric_df, "./added_complexity_analysis.csv", row.names=FALSE)
+```
+
+
+```{r}
+metric_df[order(metric_df[,"cv_rmse"]),]
+```
+
+
+```{r}
+
+# Fit the best model
+final_complex_model <- lm(log_MSRP~Age+Engine_Cylinders+Engine_HP+Transmission_Type+Vehicle_Style+Driven_Wheels+Luxury+Hybrid+Diesel+Exotic+Engine_HP_Squared+
+                            Age_Squared+Engine_Cylinders:Luxury+Engine_Cylinders:Exotic+city_mpg+city_mpg_squared,
+                          data=train_df)
+
+
+# Add the features with additional complexity to the test dataset
+test_df[,"Engine_HP_Squared"] <- test_df[,"Engine_HP"]^2
+test_df[,"Age_Squared"] <- test_df[,"Age"]^2
+test_df[,"city_mpg_squared"] <- test_df[,"city_mpg"]^2
+
+
+# Predict on the test set
+test_preds <- predict(object=final_complex_model, newdata=test_df)
+
+
+# Calculate test set metrics
+test_metrics <- caret::postResample(pred=test_preds, 
+                                    obs=test_df$log_MSRP)
+```
