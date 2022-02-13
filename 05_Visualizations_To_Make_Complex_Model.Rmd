@@ -1,0 +1,193 @@
+---
+title: "Complex_Model"
+author: "Braden Anderson"
+date: "2/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+
+source("Applied_Stats_Project_Functions.R")
+
+train_df <- read.csv("./COMBINED_TRAIN_VAL_SET_0210.csv")
+test_df <- read.csv("./testing_dataset_0208.csv")
+test_df <- set_datatypes(test_df)
+train_df <- set_datatypes(train_df)
+
+
+```
+
+
+
+```{r}
+
+mysummary<-function(x){
+  result<-c(length(x),mean(x),sd(x),sd(x)/length(x), 
+            min(x), max(x), IQR(x))
+  names(result)<-c("N","Mean","SD","SE", 
+                   "Min", "Max", "IQR")
+  return(result)
+}
+
+
+# Calculate summary statistics
+sumstats<-aggregate(formula=log_MSRP~Engine_Cylinders*Exotic,  
+                    data=train_df,                      
+                    FUN=mysummary)                 
+
+
+# Combine rows with the factor level labels and the summary stat information.
+sumstats<-cbind(sumstats[,1:2],      
+                sumstats[,-(1:2)])   
+
+levels(train_df[,""])
+```
+
+
+
+```{r}
+
+library(ggplot2)
+ggplot(sumstats,aes(x=Engine_Cylinders,y=Mean,group=Exotic,colour=Exotic))+
+  ylab("log MSRP")+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=Mean-SD,ymax=Mean+SD),width=.1)
+
+```
+
+
+
+```{r}
+
+# Calculate summary statistics
+sumstats<-aggregate(formula=log_MSRP~Engine_Cylinders*Luxury,  
+                    data=train_df,                      
+                    FUN=mysummary)                 
+
+
+# Combine rows with the factor level labels and the summary stat information.
+sumstats<-cbind(sumstats[,1:2],      # First two rows contain the factor levels for Background and Sex
+                sumstats[,-(1:2)])   # Rest of the rows contain summary stats for the combination of factor levels.
+
+
+ggplot(sumstats,aes(x=Engine_Cylinders,y=Mean,group=Luxury,colour=Luxury))+
+  ylab("log MSRP")+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=Mean-SD,ymax=Mean+SD),width=.1)
+
+```
+
+```{r}
+
+# Calculate summary statistics
+sumstats<-aggregate(formula=log_MSRP~Engine_Cylinders*Vehicle_Size,  
+                    data=train_df,                      
+                    FUN=mysummary)                 
+
+
+# Combine rows with the factor level labels and the summary stat information.
+sumstats<-cbind(sumstats[,1:2],      # First two rows contain the factor levels for Background and Sex
+                sumstats[,-(1:2)])   # Rest of the rows contain summary stats for the combination of factor levels.
+
+
+ggplot(sumstats,aes(x=Engine_Cylinders,y=Mean,group=Vehicle_Size,colour=Vehicle_Size))+
+  ylab("log MSRP")+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=Mean-SD,ymax=Mean+SD),width=.1)
+
+```
+
+
+
+```{r}
+
+# Calculate summary statistics
+sumstats<-aggregate(formula=log_MSRP~Engine_Cylinders*Diesel,  
+                    data=train_df,                      
+                    FUN=mysummary)                 
+
+
+# Combine rows with the factor level labels and the summary stat information.
+sumstats<-cbind(sumstats[,1:2],      # First two rows contain the factor levels for Background and Sex
+                sumstats[,-(1:2)])   # Rest of the rows contain summary stats for the combination of factor levels.
+
+
+ggplot(sumstats,aes(x=Engine_Cylinders,y=Mean,group=Diesel,colour=Diesel))+
+  ylab("log MSRP")+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=Mean-SD,ymax=Mean+SD),width=.1)
+
+```
+
+
+
+```{r}
+
+
+plot_partial_residuals(df=train_df,
+                       analysis_var = "Engine_HP",
+                       response_var="log_MSRP",
+                       explanatory_vars = c("Age", "Engine_Cylinders", "Engine_HP","Transmission_Type", "Vehicle_Style", 
+                                            "Driven_Wheels", "Luxury", "Hybrid", "Diesel", "Exotic"))
+
+
+```
+
+
+```{r}
+
+
+plot_partial_residuals(df=train_df,
+                       analysis_var = "Age",
+                       response_var="log_MSRP",
+                       explanatory_vars = c("Age", "Engine_Cylinders", "Engine_HP","Transmission_Type", "Vehicle_Style", 
+                                            "Driven_Wheels", "Luxury", "Hybrid", "Diesel", "Exotic"))
+
+
+```
+
+
+```{r}
+
+
+plot_partial_residuals(df=train_df,
+                       analysis_var = "city_mpg",
+                       response_var="log_MSRP",
+                       explanatory_vars = c("Age", "Engine_Cylinders", "Engine_HP","Transmission_Type", "Vehicle_Style", 
+                                            "Driven_Wheels", "Luxury", "Hybrid", "Diesel", "Exotic", "Age_Squared", "city_mpg"))
+
+
+```
+
+
+
+
+```{r}
+
+
+plot_partial_residuals(df=train_df,
+                       analysis_var = "highway_MPG",
+                       response_var="log_MSRP",
+                       explanatory_vars = c("Age", "Engine_Cylinders", "Engine_HP","Transmission_Type", "Vehicle_Style", 
+                                            "Driven_Wheels", "Luxury", "Hybrid", "Diesel", "Exotic", "Age_Squared", "highway_MPG"))
+
+
+```
+
+
+
+
+
+
+
