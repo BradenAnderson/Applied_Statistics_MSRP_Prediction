@@ -1,0 +1,105 @@
+---
+title: "Model_Finalists_Comparison"
+author: "Braden Anderson"
+date: "2/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+source("Applied_Stats_Project_Functions.R")
+
+analysis_df <- read.csv("./SEARCH_ANALYSIS_DATA_0210.csv")
+
+```
+
+
+
+```{r}
+
+# Get the models of each size that scored the best on Adjusted R2
+best_r2 <- filter_models_by_best_per_metric(df=analysis_df,
+                                            best_metric_name="adj_rsq")
+
+
+# Get the models of each size that scored the best on validation R2
+best_val_rsq <- filter_models_by_best_per_metric(df=analysis_df,
+                                            best_metric_name="val_rsq")
+
+
+# Get the models of each size that scored the best on prediction R2
+best_pred_rsq <- filter_models_by_best_per_metric(df=analysis_df,
+                                                     best_metric_name="pred_rsq")
+
+
+# Combined the three sets of best models obtained above
+best_combined <- rbind(best_r2, best_val_rsq, best_pred_rsq)
+```
+
+```{r}
+
+# Run all of the best models obtained above through one more set of cross-validation to 
+# make the final decision (Approach outlined in ISLR, page 205).
+final_comparisons <- final_model_comparisons(train_data=train_df,
+                                             model_search_df=best_combined)
+```
+
+
+
+```{r}
+#final_comparisons <- read.csv("./FINAL_COMPARISONS.csv")
+
+# COMPARE FINAL 30 MODELS ACROSS THESE METRICS TO MAKE FINAL SELECTION
+#final_comparisons[order(final_comparisons[,"cv_mae"]), c("predictor_count","cv_mae", "cv_mae_pct_increase", "predictors")]
+#final_comparisons[order(final_comparisons[,"press"]), c("predictor_count","press", "press_pct_increase", "predictors")]
+#final_comparisons[order(final_comparisons[,"cv_rmse"]), c("predictor_count","cv_rmse", "cv_rmse_pct_increase", "predictors")]
+#final_comparisons[order(final_comparisons[,"aic"]), c("predictor_count","aic", "aic_pct_increase", "predictors")]
+#final_comparisons[order(final_comparisons[,"bic"]), c("predictor_count","bic", "bic_pct_increase", "predictors")]
+#final_comparisons[order(final_comparisons[,"pred_rsq"], decreasing=TRUE), c("predictor_count","pred_rsq", "pred_rsq_pct_decrease", "predictors")]
+final_comparisons[order(final_comparisons[,"cv_rsquared"], decreasing=TRUE), c("predictor_count","cv_rsquared", "cv_rsq_pct_decrease", "predictors")]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
